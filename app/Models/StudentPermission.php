@@ -21,6 +21,8 @@ class StudentPermission extends Model
     protected $casts = [
         'start_date' => 'date',
         'end_date' => 'date',
+        'first_excused_class_id' => 'integer',
+        'last_excused_class_id' => 'integer',
     ];
 
     public function student(): BelongsTo
@@ -83,7 +85,7 @@ class StudentPermission extends Model
      *
      * @param string|Carbon $date The date to check
      * @param int $classId The class ID to check
-     * @param array $orderedClassIds Optional: Pre-computed ordered class IDs for the day
+     * @param array $orderedClassIds Optional: Pre-computed ordered class IDs for the day (must be integers)
      * @return bool True if the class is covered by this permission
      */
     public function coversClass($date, int $classId, array $orderedClassIds = []): bool
@@ -98,11 +100,15 @@ class StudentPermission extends Model
             return true;
         }
 
+        // Ensure we're working with integers
+        $firstExcusedId = $this->first_excused_class_id ? (int) $this->first_excused_class_id : null;
+        $lastExcusedId = $this->last_excused_class_id ? (int) $this->last_excused_class_id : null;
+
         // If we don't have ordered class IDs, we need to determine if this class falls
         // within the permission range. For now, just check direct match.
         if (empty($orderedClassIds)) {
             // Simple check: is this the first or last excused class?
-            if ($this->first_excused_class_id === $classId || $this->last_excused_class_id === $classId) {
+            if ($firstExcusedId === $classId || $lastExcusedId === $classId) {
                 return true;
             }
             // Without ordering info, we can't determine if it's between
@@ -110,23 +116,28 @@ class StudentPermission extends Model
             return false;
         }
 
-        // Find positions in the ordered list
-        $classPosition = array_search($classId, $orderedClassIds);
+        // Ensure all IDs in the array are integers for consistent comparison
+        $orderedClassIds = array_map('intval', $orderedClassIds);
+
+        // Find position of the class being checked
+        $classPosition = array_search($classId, $orderedClassIds, true);
         if ($classPosition === false) {
-            return false; // Class not in the ordered list
+            return false; // Class not in the ordered list for today
         }
 
-        $firstPosition = $this->first_excused_class_id
-            ? array_search($this->first_excused_class_id, $orderedClassIds)
-            : 0; // If no first specified, start from beginning
+        // Find position of first excused class (or start from beginning if not set)
+        $firstPosition = 0;
+        if ($firstExcusedId !== null) {
+            $pos = array_search($firstExcusedId, $orderedClassIds, true);
+            $firstPosition = ($pos !== false) ? $pos : 0;
+        }
 
-        $lastPosition = $this->last_excused_class_id
-            ? array_search($this->last_excused_class_id, $orderedClassIds)
-            : count($orderedClassIds) - 1; // If no last specified, go to end
-
-        // Handle case where first/last class isn't in today's schedule
-        if ($firstPosition === false) $firstPosition = 0;
-        if ($lastPosition === false) $lastPosition = count($orderedClassIds) - 1;
+        // Find position of last excused class (or go to end if not set)
+        $lastPosition = count($orderedClassIds) - 1;
+        if ($lastExcusedId !== null) {
+            $pos = array_search($lastExcusedId, $orderedClassIds, true);
+            $lastPosition = ($pos !== false) ? $pos : count($orderedClassIds) - 1;
+        }
 
         // Check if the class falls within the excused range (inclusive)
         return $classPosition >= $firstPosition && $classPosition <= $lastPosition;

@@ -172,11 +172,13 @@
                                                 ->filter(fn($c) => $c->schedules->contains(fn($s) => $s->day_of_week === $dayOfWeek))
                                                 ->sortBy(fn($c) => $c->schedules->first(fn($s) => $s->day_of_week === $dayOfWeek)?->start_time ?? '23:59')
                                                 ->pluck('id')
+                                                ->map(fn($id) => (int) $id)
+                                                ->values()
                                                 ->toArray();
 
                                             // Check if any permission covers this class
                                             foreach ($studentPermissions as $perm) {
-                                                if ($perm->coversClass($date, $row['class']->id, $orderedClassIds)) {
+                                                if ($perm->coversClass($date, (int) $row['class']->id, $orderedClassIds)) {
                                                     $isOnPermission = true;
                                                     break;
                                                 }
