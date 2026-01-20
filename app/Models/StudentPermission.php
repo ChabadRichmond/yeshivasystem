@@ -83,6 +83,11 @@ class StudentPermission extends Model
     /**
      * Check if a specific class is covered by this permission on a given date.
      *
+     * The logic works as follows for multi-day permissions:
+     * - On start_date: first_excused_class applies (excuse from this class onwards)
+     * - On dates in between: ALL classes are excused (full day)
+     * - On end_date: last_excused_class applies (excuse up to and including this class)
+     *
      * @param string|Carbon $date The date to check
      * @param int $classId The class ID to check
      * @param array $orderedClassIds Optional: Pre-computed ordered class IDs for the day (must be integers)
@@ -90,12 +95,14 @@ class StudentPermission extends Model
      */
     public function coversClass($date, int $classId, array $orderedClassIds = []): bool
     {
+        $checkDate = $date instanceof Carbon ? $date->startOfDay() : Carbon::parse($date)->startOfDay();
+
         // First check if date is covered
-        if (!$this->coversDate($date)) {
+        if (!$this->coversDate($checkDate)) {
             return false;
         }
 
-        // If full day permission, all classes are covered
+        // If full day permission (no class restrictions), all classes are covered
         if ($this->isFullDay()) {
             return true;
         }
@@ -104,15 +111,32 @@ class StudentPermission extends Model
         $firstExcusedId = $this->first_excused_class_id ? (int) $this->first_excused_class_id : null;
         $lastExcusedId = $this->last_excused_class_id ? (int) $this->last_excused_class_id : null;
 
-        // If we don't have ordered class IDs, we need to determine if this class falls
-        // within the permission range. For now, just check direct match.
+        // Determine which day of the permission period we're on
+        $isStartDate = $checkDate->equalTo($this->start_date->startOfDay());
+        $isEndDate = $checkDate->equalTo($this->end_date->startOfDay());
+        $isMiddleDate = !$isStartDate && !$isEndDate;
+
+        // Middle dates (not start, not end) = full day excused
+        if ($isMiddleDate) {
+            return true;
+        }
+
+        // If we don't have ordered class IDs, use simple logic
         if (empty($orderedClassIds)) {
-            // Simple check: is this the first or last excused class?
-            if ($firstExcusedId === $classId || $lastExcusedId === $classId) {
-                return true;
+            // On start date only: check if this is the first excused class or after
+            if ($isStartDate && !$isEndDate) {
+                return $firstExcusedId === null || $firstExcusedId === $classId;
             }
-            // Without ordering info, we can't determine if it's between
-            // Default to not covered if we can't determine
+            // On end date only: check if this is the last excused class or before
+            if ($isEndDate && !$isStartDate) {
+                return $lastExcusedId === null || $lastExcusedId === $classId;
+            }
+            // Same day (start = end): check both boundaries
+            if ($isStartDate && $isEndDate) {
+                if ($firstExcusedId === $classId || $lastExcusedId === $classId) {
+                    return true;
+                }
+            }
             return false;
         }
 
@@ -125,18 +149,24 @@ class StudentPermission extends Model
             return false; // Class not in the ordered list for today
         }
 
-        // Find position of first excused class (or start from beginning if not set)
+        // Determine the effective range based on which day we're on
         $firstPosition = 0;
-        if ($firstExcusedId !== null) {
-            $pos = array_search($firstExcusedId, $orderedClassIds, true);
-            $firstPosition = ($pos !== false) ? $pos : 0;
+        $lastPosition = count($orderedClassIds) - 1;
+
+        if ($isStartDate) {
+            // On start date: first_excused_class determines where excuses begin
+            if ($firstExcusedId !== null) {
+                $pos = array_search($firstExcusedId, $orderedClassIds, true);
+                $firstPosition = ($pos !== false) ? $pos : 0;
+            }
         }
 
-        // Find position of last excused class (or go to end if not set)
-        $lastPosition = count($orderedClassIds) - 1;
-        if ($lastExcusedId !== null) {
-            $pos = array_search($lastExcusedId, $orderedClassIds, true);
-            $lastPosition = ($pos !== false) ? $pos : count($orderedClassIds) - 1;
+        if ($isEndDate) {
+            // On end date: last_excused_class determines where excuses end
+            if ($lastExcusedId !== null) {
+                $pos = array_search($lastExcusedId, $orderedClassIds, true);
+                $lastPosition = ($pos !== false) ? $pos : count($orderedClassIds) - 1;
+            }
         }
 
         // Check if the class falls within the excused range (inclusive)
