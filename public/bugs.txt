@@ -1,0 +1,181 @@
+Enter bugs and feature edits here
+
+COMPLETED:
+1. [DONE] in list mode i dont have the option to mark someone "left early", "Unmark", "mark excused", "edit late time" and "note"
+   - Fixed: Added options-menu-container class so the ••• menu is visible in both grid and list views
+
+2. [DONE] no option for "unmark" in bulk attendance
+   - Fixed: Added "Unmark All" button to bulk actions dropdown with bulkUnmark() function
+
+3. [DONE] in reports see by class and than days like in picture (report.jpeg)
+   - Fixed: Added daily history grid view for single student reports showing classes as rows, dates as columns
+
+4. [DONE] allow me to sort from "A-Z" and from "Z-A" in the "Reports" meaning I would like to see who has the lowest to highest and vice versa precent from the entire yeshiva.
+   - Fixed: Added "Sort By" dropdown with Name (A-Z), Best Attendance (High to Low), Worst Attendance (Low to High)
+
+5. [DONE] See report.png dates are upside down
+   - Fixed: Changed CSS from vertical-rl with rotate(180deg) to vertical-lr for proper date orientation
+
+6. [DONE] On the attendance report page it does not update to a specific class when choosing a specific class
+   - Fixed: Added proper type casting for class_id in ReportController using request->filled() and (int) casting
+   - Fixed: Updated view comparisons to use strict type comparison (int)$classId === $class->id
+
+7. [DONE] On the attendance report page when choosing this week, it should default to sunday to Saturday and not from current day to Sunday.
+   - Fixed: Changed Carbon startOfWeek() to startOfWeek(Carbon::SUNDAY) and endOfWeek(Carbon::SATURDAY)
+
+8. [DONE] In the reports where it shows minutes late we want it to include minutes of the absent classes as well, so if a student was marked absent for a 60 minute class that should add up in the total of minutes late another 60 minutes etc.
+   - Fixed: Added total_minutes_missed calculation that includes both late minutes and full class duration for absences
+   - Changed column header from "Min Late" to "Min Missed" to reflect the new calculation
+
+9. [DONE] We want to have an option in the reports to manually edit an attendance, if a student had the wrong attendance for a class the teacher can easily change that from the reports without having to go and find that day's attendance.
+   - Fixed: Added clickable cells in the student history grid that open an edit modal
+   - Modal allows changing status (present/late/absent/unmark), minutes late, and excused toggle
+   - Changes are saved via AJAX and page reloads to show updated data
+
+10. [DONE] Can we have an option to easily clear attendance for a class or for a day (so reset all to unmarked for that period).
+   - Fixed: Added "Clear" dropdown on attendance page with two options:
+     - "Clear This Session" - clears all attendance for current class on selected date
+     - "Clear Entire Day" - clears all attendance for all classes on selected date (with double confirmation)
+   - Added clearClassAttendance() and clearDayAttendance() methods to AttendanceController
+   - Fixed SyntaxError: Added 'Accept': 'application/json' header to clearDayAttendance() fetch request
+   - Enhanced error handling with better error messages in catch block
+
+
+11. [DONE] Can we add a option to import from a spreadsheet a sessions attendance, whether it be for one session for a full day of sessions or even a week of sessions.
+   - Fixed: Added full import functionality at /attendance/import
+   - Download template CSV pre-filled with students from a specific class
+   - Upload completed CSV with flexible status values (present/p/1, late/l, absent/a, etc.)
+   - Validates all data and reports errors/skipped rows
+   - Added "Import" button in attendance page header
+
+12. [DONE] Can we add an export option to export attendance for a specific date or custom date range to a spreadsheet?
+   - Fixed: Added "Export CSV" button on attendance report page
+   - Exports all attendance records for the selected date range and class filter
+   - CSV includes: Date, Class/Session, Student Name, Status, Minutes Late, Excused, Left Early, Note
+
+13. [DONE] For some reason in the reports all classes are coming up as 60 minutes classes which affects the on time performance stat, The problem is that some classes are shorter, For example, Mincha is 15 minutes but someone who came 5 minutes late to Mincha (a 15 minute class) is coming up as the same percentage as someone coming late to Chassidus Boker (a one hour 30 minute session) so it's off.
+   - Fixed: Updated getClassDuration() to query ClassSchedule model for start_time and end_time
+   - Now calculates actual class duration from schedule instead of defaulting to 60 minutes
+   - Falls back to 60 minutes only if no schedule found or times are invalid
+
+14. [DONE] In the reports when a mark is absent or late excused it is reporting it as an absent or late for percentage stats, however we need that to be changed to not be calculated at all, it should just disregard that from the calculation, so the absent excused class doesn't calculate into the report stats, and the late excused gets deducted from the total minutes of that class, recalculating that class with only the minutes left after excused. We should have the absent excused and late excused come up with a different marker perhaps a yellow circle will indicate excused.
+   - Fixed: Updated ReportController getStudentOverallStats() and calculateTimeBasedStats() methods:
+     - absent_excused: Completely excluded from calculations (doesn't affect percentage at all)
+     - late_excused: Reduces class duration by late minutes, counts remaining time as attended
+   - Fixed: Updated StudentController show() method to exclude absent_excused from attendance percentage
+   - Fixed: Updated AttendanceStats model calculateForStudent() to handle excused statuses correctly
+   - Fixed: Updated attendance.blade.php rate calculation to exclude absent_excused from total
+   - Added: Yellow circle visual indicators in attendance-stats.blade.php grid:
+     - Solid yellow circle for absent_excused with tooltip "Absent Excused (not counted)"
+     - Late minutes with small yellow dot for late_excused with tooltip "Late Excused (adjusted)"
+
+15. [DONE] From mobile phone and tablets under classes it does not allow me to do anything the buttons don't work, from a desktop however it does.
+   - Fixed: Changed drag-and-drop behavior to only work from a specific drag handle (⋮⋮ icon)
+   - Removed cursor-move from entire session card to allow button clicks
+   - Added proper touch-action CSS properties:
+     - session-card: pan-y (allows vertical scrolling)
+     - buttons/links: manipulation (prevents double-tap zoom, ensures clicks work)
+     - drag-handle: none (captures all touch events for dragging)
+   - Updated Sortable.js config with handle: '.drag-handle' to restrict dragging
+   - Added touchStartThreshold: 5 for better touch support
+   - Added proper AJAX headers to reorder fetch request
+
+16. [DONE] In the Attendance Statistics, if a student wasn's marked for a certain period at all, when seeing a full list of attendance reports, the student that was not marked does not show up, we want that all students should show in that list, however if not marked that student will show no percentage.
+
+17. [DONE] in the "Attendance Report" and "attendance statistics listing all students it doesn't provide the total amount of time a bochur missed, we have to go into every individual report to see his total amount of minutes absent from class. it would be helpful to see it next to the percentage in the full list of students aswell.
+   - Fixed: Added "Min Missed" column to All Students Summary view in attendance-stats.blade.php
+   - Added total_minutes_missed calculation to calculateOverallStatsFromAttendances() method in ReportController
+   - Calculation includes full class duration for unexcused absences + late minutes for unexcused lates
+   - Excused statuses (absent_excused, late_excused) do not count toward minutes missed
+
+18. [DONE] Follow up on task 11 I want to import past attendance with the following format so I can do a bulk upload in one shot, let's have the CSV have two columns for first name and last name, the next 7 columns should be in order of days up to 7 days, and those should input attendance marks for class 1 of 10 first class being Chassidus Boker, the next 7 columns would be corresponding 7 days of class 2, and so on till we have 7 columns for each of the 10 classes. This way I can do a bulk upload for a full week of attendance. Please mark a star * as present, the letter r as absent excused, the letter a as absent, and if there is just a number then that would be the late as in the number of late minutes.
+If we can make the downloadable templates filterable for which classes to add which dates to put in up to 7 days at a time. This way it has the option to do only one class one day it has the option to do multiple classes and several days.
+
+19. [DONE] I want to have an option to delete some classes
+
+20. [DONE] In Attendance page one of the options in the click down menu of each individual student should be view details, which should take you straight to the students page wher you can see his profile.
+
+21. [DONE] Can we make that the attendance page should open to grid like list of the classes, with the current date at the top of the page, (the date should be able to be changed if wanting to edit camlaases of another day). Past classes that are completed, and all students are marked should have a green color tone, the current class untill completed should have maybe a Blue color tone, past incomplete classes can have orange or red color tone, and future classes have no color, and you click the class to mark that class.
+
+22. [DONE] Overall percentage is showing as 100 percent even for those coming late, is it possible that late minutes isn't affecting the percentage can we have this fixed.
+
+23. [DONE] Calculate total of minutes based on absence and lateness in the "attendance statistics" once a specific seder is chosen.
+   - Fixed: Added total_minutes_missed calculation to calculateStatsFromAttendances() method in ReportController
+   - Single Class Report now shows "Min Missed" column with correct total (absences + late minutes)
+   - Updated attendance-stats.blade.php to display total_minutes_missed instead of just total_minutes_late
+
+24. [DONE] Add option to delete a photo in a student's profile.
+   - Fixed: Added "Delete Photo" button on student edit page with confirmation dialog
+   - Calls deletePhoto() AJAX function to remove photo from storage and database
+
+25. [DONE] In the attendance statistics we should have a total Minutes missed per student, let's add that as a column.
+   - Fixed: Same as item 17 - Added "Min Missed" column to All Students Summary view
+   - Shows total minutes missed (absences + late time) for each student across all classes
+
+26. [DONE] On the attendance reports page. We should add filter button. For high to low - low to high.
+   - Fixed: Added "Sort By" dropdown on attendance report page with options:
+     - Name (A-Z), Name (Z-A), Best Attendance (High to Low), Worst Attendance (Low to High)
+
+27. [DONE] In student full report it gives min missed per class. Lets add a column to sum up total minutes per student.
+   - Fixed: Added TOTAL row at bottom of Single Student Report class breakdown table
+   - Sums up: total sessions, present, late, absent counts, and total minutes missed across all classes
+   - Makes it easy to see overall totals without manually adding up each class
+
+28. [DONE] We have attendance takers. That are only taking attendance for specific classes, and only for some select students, under the class, I have selected that user as an attendance taker, I select a select group of students assigned to him, the access that he should have in his account (if he is only assigned that) is only that class which he is taking attendance, and only be able to see and mark those students. The way it is now he can see attendance reports for all students, he can see all classes, and he can take all attendance for all students.
+To sum it up: when he opens his account, he should have dashboard access to only attendance, in attendance he should see only his classes that he has permission to take attendance, and then in the attendance for that class he should see only the students assigned to him.
+   - Fixed: Added getAttendanceClassIds() method to HasTeachingClasses trait - returns only classes where teacher has student assignments
+   - Fixed: Added canAccessClassForAttendance() method for authorization checks
+   - Fixed: Updated grid(), mark(), and index() methods in AttendanceController to filter by actual student assignments
+   - Teachers now only see classes where they have assigned students, and only see those specific students
+
+29. [DONE] When editing a class the student selection section should be split into grades (currently Shiur Aleph and Shiur Beis), on top of each grade, there should be a select all option to choose all students in that grade, for smoother and faster selection.
+Within the teachers assignment of student you should have the same grouping idea, with a default teacher role which will set all students with that role unless changed. Also I would like a way to minimize a teacher after selecting the students so that it does not take up the whole page.
+   - Fixed: Students are now grouped by academic grade with collapsible sections
+   - Fixed: Each grade has its own "Select All" checkbox
+   - Fixed: Added global "Select All" and "Clear All" buttons at top
+   - Fixed: Teacher assignment sections are now collapsible with chevron icons
+   - Fixed: Each teacher section shows assignment count badge and "All" checkbox
+
+30. [DONE] On mobile we fixed that a student has to be selected to mark, since it was very sensitive and sometimes scrolling marked, You fixed this, but only absent and present was fixed, the late button is still clickable even without selecting the student. also when it's pressed it just says late, and doesn't indicate amount of minutes, which then reflects in report as an L and doesn't reflect any minutes in total minutes late or percentage, we need it to show minutes late in the attendance and in the reports so it properly sums it up and the time should be calculated based on current time of clicking (so system should get the current time and calculate from classs start time, (it is strange since the system used to do that and it stopped at some point).
+   - Fixed: Late button now uses two-tap confirmation on mobile (first tap = pending state, second tap = confirm)
+   - Fixed: Shows confirmation dialog with auto-calculated minutes late based on class start time
+   - Fixed: If user cancels confirmation, opens late popup with pre-filled calculated minutes
+   - Fixed: Long press still opens full popup for excused/notes options
+
+31. [DONE] In a case where a specific session on a spefic date is cancelled for that day, We should have an option to cancel the session. And in reports that shouldn't calculate into anything for minutes or percentage, it should come up with a black C in the reports for that class. from a UI persepctive, I am thinking that the teacher can go into a class and there will be a button somewhere on top that will say Mark class cancelled and it will unmark any marked students andmark it cancelled (maybe have a warning and confirmation dialogue to confirm the action)
+   - Fixed: Added "Cancel Session" button on attendance mark page with confirmation modal
+   - Fixed: Cancelled sessions show with gray styling, "CANCELLED" label, and "C" icon in grid view
+   - Fixed: Cancelled sessions show banner with "Restore Session" button on mark page
+   - Fixed: Reports exclude cancelled sessions from all percentage and minutes calculations
+   - Fixed: Uses whereNotExists query to filter out cancelled sessions from attendance queries
+
+32. [DONE] In reference to task 17 in the attendance statistics the Menahel has the ability to pull a specific class and specific dates, and it shoots a report of all students and the detailed class, with which they were late, present or absent too, he wants it to have a column there for total minutes late, this allows for easier access to which students need to be spoken to without having to go into each individual student report.
+   - Fixed: Same as item 23 - Single Class Report now shows "Min Missed" column
+   - Column displays total_minutes_missed (absences + late minutes) for each student
+   - Allows administrators to quickly identify students who need attention without clicking into individual reports
+
+33. [DONE] I changed a start time on A class today. And while marking everything was working fine. Untill I left the page and came back to it. Then it want back to default, doesn't look like it changed any of the last students, but the new added late students went back to the default start time, we need to have it stay changed for that class for that day permanently without affecting that class on other days.
+   - Fixed: Created class_time_overrides table to store date-specific time changes
+   - When start/end time is changed on attendance page, it's saved to database via AJAX
+   - On page load, any saved time override for that class/date is loaded automatically
+   - Changes persist permanently for that specific class/date without affecting other days
+
+34. [DONE] The newly implemented canceled classes, instead of showing in the reports as excused should be marked with a black C indicating canceled and follow unmarked protocol not calculating in the system for markings or percentage.
+   - Fixed: Cancelled classes now show as black "C" in the daily history grid in reports
+   - Cancelled sessions are not counted in percentage calculations
+   - Added cancelledSessionKeys to view data for proper display
+
+35. [DONE] Often there will be students getting permission to leave Yeshiva for various reasons whether it's a family celebration or medical treatment etc.. we would like to put in a option for the principal to go into an individual student and Mark him permission for a set amount of time or days, and what that should do is completely cancel out those classes for that student and he won't even come into the attendance, the way those classes will look in the students report should be similar to a canceled class where it should Mark a Black C. .... The excuse option in attendance for a class will be more for in the moment excused whether it's a student who is sick, work out permission to skip a class for whatever reason.
+   - Fixed: Created student_permissions table to store permission/leave periods
+   - Added Permissions/Leave section on student profile page with add/delete functionality
+   - Students on permission are automatically excluded from attendance marking page
+   - Reports show black "C" for dates when student was on permission
+   - Permission periods don't count toward attendance statistics
+
+36. [DONE] Notes in attendance, I would like the note to create a note button on the student's box, which when pressed will pop up the specific note, as well as in the report the way the note should be accessed is by putting a note sign next to the mark whether it's the x present or late, and when you press the mark it'll pop up the note that was input for that student in that class. How does this sound? Other suggestions welcome... Perhaps
+   - Fixed: Added note indicator button on student cards in attendance marking page
+   - Shows truncated note preview with click to view full note in popup modal
+   - Added small note icon next to attendance marks in reports daily history grid
+   - Clicking the note icon opens a popup showing the full note with class/date context
+
+37. Let's work on the grades page, each teacher should have the grades to to input grades, we want to designate certain class grades to certain teachers, there should be a schedule for tests, and they should be expected to input the grades when completed, on average every class should be having biweekly tests, some may have monthly, it's crucial that the schedule is kept to for report cards etc... when a test is completed the grade for that test, with a short title or/and date, gets input for reporting and the tests are graded from 1 to 100%. Each class will now have besides it's attendance mark a test grade mark. And every 2 weeks when report card is sent it includes attendance results and test marks results. This is a rough draft of my plan, maybe you can help me plan it out.

@@ -1,0 +1,123 @@
+<x-app-layout>
+    <x-slot name="header">
+        <div class="flex justify-between items-center">
+            <h2 class="font-semibold text-xl text-gray-800 leading-tight">Edit Session: {{ $class->name }}</h2>
+            <a href="{{ route('classes.index') }}" class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700">Back</a>
+        </div>
+    </x-slot>
+
+    <div class="py-6">
+        <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
+            <form method="POST" action="{{ route('classes.update', $class) }}">
+                @csrf
+                @method('PUT')
+
+                <div class="bg-white rounded-xl shadow-md p-6 space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Session Name *</label>
+                        <input type="text" name="name" value="{{ old('name', $class->name) }}" required
+                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    </div>
+
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Teacher</label>
+                            <select name="teacher_id" class="w-full rounded-md border-gray-300 shadow-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">End Time</label>
+                            <input type="time" name="end_time" value="{{ old('end_time', $class->end_time ? \Carbon\Carbon::parse($class->end_time)->format('H:i') : '') }}"
+                                   class="w-full rounded-md border-gray-300 shadow-sm">
+                                <option value="">-- Select --</option>
+                                @foreach($teachers as $teacher)
+                                    <option value="{{ $teacher->id }}" {{ old('teacher_id', $class->teacher_id) == $teacher->id ? 'selected' : '' }}>{{ $teacher->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
+                            <input type="time" name="schedule_time" value="{{ old('schedule_time', $class->schedule_time ? \Carbon\Carbon::parse($class->schedule_time)->format('H:i') : '') }}"
+                                   class="w-full rounded-md border-gray-300 shadow-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">End Time</label>
+                            <input type="time" name="end_time" value="{{ old('end_time', $class->end_time ? \Carbon\Carbon::parse($class->end_time)->format('H:i') : '') }}"
+                                   class="w-full rounded-md border-gray-300 shadow-sm">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                        <textarea name="description" rows="2" class="w-full rounded-md border-gray-300 shadow-sm">{{ old('description', $class->description) }}</textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">End Time</label>
+                            <input type="time" name="end_time" value="{{ old('end_time', $class->end_time ? \Carbon\Carbon::parse($class->end_time)->format('H:i') : '') }}"
+                                   class="w-full rounded-md border-gray-300 shadow-sm">
+                    </div>
+
+                    <!-- Assign Students -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Assign Students</label>
+                        <p class="text-xs text-gray-500 mb-3">Selected: <span id="selected-count">{{ $class->students->count() }}</span> students</p>
+                        
+                        <div class="max-h-96 overflow-y-auto border rounded-md">
+                            @php
+                                $groupedStudents = $students->groupBy(function($s) {
+                                    return $s->academicGrade?->name ?? 'No Grade';
+                                });
+                            @endphp
+
+                            @forelse($groupedStudents as $gradeName => $gradeStudents)
+                                <div class="border-b last:border-b-0">
+                                    <!-- Grade Header with Select/Clear buttons -->
+                                    <div class="bg-gray-100 px-3 py-2 flex justify-between items-center sticky top-0">
+                                        <span class="font-medium text-gray-700">🎓 {{ $gradeName }} ({{ $gradeStudents->count() }})</span>
+                                        <div class="flex gap-2">
+                                            <button type="button" onclick="selectGrade('{{ Str::slug($gradeName) }}')" 
+                                                    class="text-xs px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200">Select All</button>
+                                            <button type="button" onclick="clearGrade('{{ Str::slug($gradeName) }}')" 
+                                                    class="text-xs px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200">Clear</button>
+                                        </div>
+                                    </div>
+                                    <div class="p-2 grid grid-cols-2 gap-1" id="grade-{{ Str::slug($gradeName) }}">
+                                        @foreach($gradeStudents as $student)
+                                            <label class="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                                                <input type="checkbox" name="students[]" value="{{ $student->id }}"
+                                                       class="student-checkbox rounded border-gray-300 text-indigo-600"
+                                                       {{ in_array($student->id, old('students', $class->students->pluck('id')->toArray())) ? 'checked' : '' }}>
+                                                <span class="text-sm">{{ $student->first_name }} {{ $student->last_name }}</span>
+                                            </label>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @empty
+                                <p class="text-gray-500 text-sm p-4">No students available. <a href="{{ route('students.create') }}" class="text-indigo-600">Add students first →</a></p>
+                            @endforelse
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex gap-3">
+                    <button type="submit" class="px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Update Session</button>
+                    <a href="{{ route('classes.index') }}" class="px-6 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function selectGrade(slug) {
+            document.querySelectorAll('#grade-' + slug + ' .student-checkbox').forEach(cb => cb.checked = true);
+            updateCount();
+        }
+        function clearGrade(slug) {
+            document.querySelectorAll('#grade-' + slug + ' .student-checkbox').forEach(cb => cb.checked = false);
+            updateCount();
+        }
+        function updateCount() {
+            document.getElementById('selected-count').textContent = document.querySelectorAll('.student-checkbox:checked').length;
+        }
+        document.querySelectorAll('.student-checkbox').forEach(cb => cb.addEventListener('change', updateCount));
+    </script>
+</x-app-layout>
