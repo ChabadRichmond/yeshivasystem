@@ -26,3 +26,9 @@ Continued bugs and feature requests. Continuing from bugs.txt
     - Now excludes cancelled sessions
     - Uses same rounding (1 decimal place)
     - Percentages should now match between profile and stats page
+
+41. Can we have all English States change to Hebrew, whether when choosing a date in the attendance itself, or when filtering dates and reports, or in the dates of individual reports. All dates in the system should be seen with Hebrew dates, as well as the default right now is to show from the beginning of the month the first, instead it should be showing the first of the Hebrew month Alef, meaning where you have the individual report default showing from the beginning of January 1st, while in the month of Shvat it should show from Alef Shvat till today.
+
+42. The Mashgiach is very used to using a spreadsheet we are in the spreadsheet he is able to see a quick report of each week each student's attendance for every single class in that week as well as a sum up of minutes missed and percentage calculated, is there a way we can have a spreadsheet style view where he can easily it on one page see the total report of each student of that week with specific details for each class minutes missed and percentage of that week.
+
+42. Any way to get the reports to load faster.

@@ -389,7 +389,7 @@
                                     @endif
                                 </span>
                                 @if($attendance?->absenceReason)
-                                    <div class="text-xs text-gray-500 mt-0.5" title="Reason: {{ $attendance->absenceReason->name }}">📋 {{ $attendance->absenceReason->name }}</div>
+                                    <div class="text-xs text-gray-500 mt-0.5" title="Reason: {{ $attendance->absenceReason->name }}">{{ $attendance->absenceReason->name }}</div>
                                 @endif
                                 @if($attendance?->excusedByUser)
                                     <div class="text-xs text-gray-400 mt-0.5" title="Excused by {{ $attendance->excusedByUser->name }}">by {{ Str::limit($attendance->excusedByUser->name, 10) }}</div>
@@ -414,12 +414,12 @@
                                     •••
                                 </button>
                                 <div id="menu-{{ $student->id }}" class="hidden absolute left-1/2 -translate-x-1/2 top-full mt-1 w-44 bg-white rounded-lg shadow-lg border z-50">
-                                    <button onclick="unmarkAttendance({{ $student->id }})" class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded-t-lg">🔄 Unmark</button>
-                                    <a href="{{ route('students.show', $student) }}" class="block w-full text-left px-3 py-2 text-sm hover:bg-gray-100">👤 View Details</a>
-                                    <button onclick="openExcusedPopup({{ $student->id }}, '{{ $student->first_name }} {{ $student->last_name }}')" class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100">✓ Mark Excused</button>
-                                    <button onclick="openLatePopup({{ $student->id }}, '{{ $student->first_name }} {{ $student->last_name }}')" class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100">⏰ Edit Late Time</button>
-                                    <button onclick="openLeftEarlyPopup({{ $student->id }}, '{{ $student->first_name }} {{ $student->last_name }}')" class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100">🚪 Left Early</button>
-                                    <button onclick="openNotePopup({{ $student->id }}, '{{ $student->first_name }} {{ $student->last_name }}')" class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded-b-lg">📝 Add Note</button>
+                                    <button onclick="unmarkAttendance({{ $student->id }})" class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded-t-lg">Unmark</button>
+                                    <a href="{{ route('students.show', $student) }}" class="block w-full text-left px-3 py-2 text-sm hover:bg-gray-100">View Details</a>
+                                    <button onclick="openExcusedPopup({{ $student->id }}, '{{ $student->first_name }} {{ $student->last_name }}')" class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100">Mark Excused</button>
+                                    <button onclick="openLatePopup({{ $student->id }}, '{{ $student->first_name }} {{ $student->last_name }}')" class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100">Edit Late Time</button>
+                                    <button onclick="openLeftEarlyPopup({{ $student->id }}, '{{ $student->first_name }} {{ $student->last_name }}')" class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100">Left Early</button>
+                                    <button onclick="openNotePopup({{ $student->id }}, '{{ $student->first_name }} {{ $student->last_name }}')" class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded-b-lg">Add Note</button>
                                 </div>
                             </div>
                         </div>

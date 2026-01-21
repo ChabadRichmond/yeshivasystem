@@ -234,9 +234,14 @@ class AttendanceController extends Controller implements HasMiddleware
         // Get classes for this day of week - filtered by permission for teachers
         $user = auth()->user();
         $classesQuery = SchoolClass::active()
-            ->with(['schedules' => function ($query) use ($selectedDayOfWeek) {
-                $query->where('day_of_week', $selectedDayOfWeek)->where('is_active', true);
-            }]);
+            ->with([
+                'schedules' => function ($query) use ($selectedDayOfWeek) {
+                    $query->where('day_of_week', $selectedDayOfWeek)->where('is_active', true);
+                },
+                'students' => function ($query) {
+                    $query->where('enrollment_status', 'active');
+                }
+            ]);
 
         // Filter classes for teachers - only show classes they have student assignments in
         if ($user && $user->hasRole('Teacher') && !$user->hasRole(['Super Admin', 'Admin'])) {
@@ -257,11 +262,39 @@ class AttendanceController extends Controller implements HasMiddleware
             ->pluck('reason', 'school_class_id')
             ->toArray();
 
+        // Get ordered list of all classes for this day (sorted by start time) for permission checking
+        $orderedClassIds = $classes->sortBy(function ($class) {
+            return $class->schedules->first()?->start_time ?? '23:59:59';
+        })->pluck('id')->map(fn($id) => (int) $id)->values()->toArray();
+
+        // Load all permissions that cover this date
+        $allStudentIds = $classes->flatMap(fn($c) => $c->students->pluck('id'))->unique()->values();
+        $permissionsForDate = \App\Models\StudentPermission::whereIn('student_id', $allStudentIds)
+            ->coversDate($date)
+            ->with(['firstExcusedClass', 'lastExcusedClass'])
+            ->get()
+            ->groupBy('student_id');
+
         // Calculate stats for each class
         $classStats = [];
         foreach ($classes as $class) {
             $schedule = $class->schedules->first();
-            $totalStudents = $class->students()->count();
+
+            // Get active students (already eager loaded) and count those NOT on permission for this class
+            $classStudents = $class->students;
+            $studentsOnPermissionCount = 0;
+            foreach ($classStudents as $student) {
+                $studentPermissions = $permissionsForDate->get($student->id, collect());
+                if ($studentPermissions->isNotEmpty()) {
+                    foreach ($studentPermissions as $permission) {
+                        if ($permission->coversClass($date, (int)$class->id, $orderedClassIds)) {
+                            $studentsOnPermissionCount++;
+                            break;
+                        }
+                    }
+                }
+            }
+            $totalStudents = $classStudents->count() - $studentsOnPermissionCount;
 
             // Check if class is cancelled for this date
             $isCancelled = isset($cancellations[$class->id]);
@@ -429,7 +462,7 @@ class AttendanceController extends Controller implements HasMiddleware
             ->orderBy('first_name')
             ->get();
 
-        // Filter out students who are on permission for this class session (class-based filtering)
+        // Check which students are on permission for this class session (class-based filtering)
         $permissionsForDate = \App\Models\StudentPermission::whereIn('student_id', $students->pluck('id'))
             ->coversDate($date)
             ->with(['firstExcusedClass', 'lastExcusedClass'])
@@ -452,20 +485,20 @@ class AttendanceController extends Controller implements HasMiddleware
             ->pluck('id')
             ->toArray();
 
+        // Filter out students who are on permission for this class session
         $students = $students->filter(function ($student) use ($permissionsForDate, $date, $classId, $orderedClassIds) {
             $studentPermissions = $permissionsForDate->get($student->id, collect());
             if ($studentPermissions->isEmpty()) {
-                return true; // No permissions, include student
+                return true; // Keep student - no permissions
             }
-
-            // Check if any permission covers this class
+            // Check if any permission covers this specific class
             foreach ($studentPermissions as $permission) {
                 if ($permission->coversClass($date, (int)$classId, $orderedClassIds)) {
-                    return false; // Permission covers this class, exclude student
+                    return false; // Remove student - on permission for this class
                 }
             }
-            return true; // No permission covers this class, include student
-        });
+            return true; // Keep student - permissions don't cover this class
+        })->values();
 
         // For teachers: sort students with attendance taker assignments first, then primary students
         $attendanceTakerStudentIds = [];
